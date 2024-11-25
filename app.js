@@ -8,14 +8,21 @@ const app = express();
 // Middleware to parse form data
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Middleware to log incoming requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} Request to ${req.url}`);
+  next();
+});
+
 // Function to create a new database connection
 function createDatabase() {
-  return new sqlite3.Database('./vinyl.db', (err) => {
+  const db = new sqlite3.Database('./vinyl.db', (err) => {
     if (err) {
       console.error(err.message);
     }
     console.log('Connected to the vinyl database.');
   });
+  return db;
 }
 
 // Function to create the albums table if it doesn't exist
@@ -31,6 +38,8 @@ function createAlbumsTable(db) {
     )`, (err) => {
       if (err) {
         console.error('Error creating albums table:', err.message);
+      } else {
+        console.log('Albums table checked/created successfully.');
       }
     });
   });
@@ -40,6 +49,7 @@ function createAlbumsTable(db) {
 async function importCollectionFromDiscogs(userId, token, overwrite) {
   const url = `https://api.discogs.com/users/${userId}/collection/folders/0/releases?token=${token}&page=1&per_page=100`;
   try {
+    console.log(`Fetching collection from Discogs for user: ${userId}`);
     const response = await axios.get(url);
     const releases = response.data.releases;
 
@@ -49,6 +59,7 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
     const db = createDatabase();
     createAlbumsTable(db);
     console.log(`Total releases fetched from Discogs: ${releases.length}`);
+    
     // Iterate through each release and extract relevant information
     for (const release of releases) {
       const artist = release.basic_information.artists[0].name; // Get the artist name
@@ -61,13 +72,15 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
       const discogsUrl = `https://www.discogs.com/release/${id}-${title.replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`;
 
       // Debugging log to check values being imported
-      // console.log(`Importing album: ${artist} - ${title}, Cover Image: ${coverImage}, Discogs URL: ${discogsUrl}`);
+      console.log(`Importing album: ${artist} - ${title}, Cover Image: ${coverImage}, Discogs URL: ${discogsUrl}`);
 
       // Insert or replace the album record in the database
       db.run(`INSERT OR REPLACE INTO albums (artist, title, year, cover_image, discogs_url) VALUES (?, ?, ?, ?, ?)`, 
         [artist, title, year, coverImage, discogsUrl], (err) => {
           if (err) {
             console.error('Error inserting or updating album:', err.message);
+          } else {
+            console.log(`Album imported: ${artist} - ${title}`);
           }
       });
     }
@@ -237,11 +250,43 @@ const styles = `
       width: 80%; /* Width of the search input */
       max-width: 400px; /* Maximum width */
     }
+    /* Styles for the import form */
+    form {
+      background: #fff; /* White background for the form */
+      border-radius: 5px; /* Rounded corners */
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for the form */
+      padding: 20px; /* Padding inside the form */
+      max-width: 400px; /* Maximum width of the form */
+      margin: 20px auto; /* Center the form */
+    }
+    label {
+      display: block; /* Block display for labels */
+      margin-bottom: 5px; /* Space below labels */
+      font-weight: bold; /* Bold labels */
+    }
+    input[type="text"], input[type="checkbox"] {
+      width: 100%; /* Full width for text inputs */
+      padding: 10px; /* Padding for inputs */
+      border: 1px solid #ccc; /* Border for inputs */
+      border-radius: 5px; /* Rounded corners */
+      margin-bottom: 15px; /* Space below inputs */
+      font-size: 16px; /* Font size for inputs */
+      transition: border-color 0.3s; /* Smooth transition for border color */
+    }
+    input[type="text"]:focus {
+      border-color: #4CAF50; /* Change border color on focus */
+      outline: none; /* Remove default outline */
+    }
+    input[type="checkbox"] {
+      width: auto; /* Auto width for checkbox */
+      margin-right: 10px; /* Space to the right of the checkbox */
+    }
   </style>
 `;
 
 // Route handler for the root URL
 app.get('/', async (req, res) => {
+  console.log('Accessing root route');
   const db = createDatabase();
   createAlbumsTable(db);
   
@@ -252,7 +297,8 @@ app.get('/', async (req, res) => {
   // Query to get the total count of albums
   db.all('SELECT COUNT(*) AS count FROM albums', [], async (err, countResult) => {
     if (err) {
-      return console.error(err.message);
+      console.error(err.message);
+      return res.status(500).send('Database error');
     }
     
     const albumCount = countResult[0].count; // Get the count from the result
@@ -260,7 +306,8 @@ app.get('/', async (req, res) => {
     // Query to get the album details with sorting
     db.all(`SELECT * FROM albums ORDER BY ${sort} ${order}`, [], async (err, rows) => {
       if (err) {
-        return console.error(err.message);
+        console.error(err.message);
+        return res.status(500).send('Database error');
       }
       
       let albumList = await Promise.all(rows.map(async (row) => {
@@ -332,12 +379,14 @@ app.get('/', async (req, res) => {
 
 // Route to display a random album
 app.get('/randomAlbum', async (req, res) => {
+  console.log('Accessing random album route');
   const db = createDatabase();
   createAlbumsTable(db);
 
   db.all('SELECT * FROM albums ORDER BY RANDOM() LIMIT 1', [], (err, rows) => {
     if (err) {
-      return console.error(err.message);
+      console.error(err.message);
+      return res.status(500).send('Database error');
     }
     if (rows.length === 0) {
       return res.send('No albums found in the database.');
@@ -365,6 +414,7 @@ app.get('/randomAlbum', async (req, res) => {
 
 // Route to display the import form
 app.get('/importCollection', (req, res) => {
+  console.log('Accessing import collection route');
   res.send(`
     ${styles}
     <h1>Import Collection from Discogs</h1>
@@ -373,10 +423,14 @@ app.get('/importCollection', (req, res) => {
       <input type="text" id="userId" name="userId" required>
       <label for="token">Discogs API Token:</label>
       <input type="text" id="token" name="token" required>
-      <label for="overwrite">Overwrite existing data:</label>
-      <input type="checkbox" id="overwrite" name="overwrite" value="true">
-      <button type="submit">Import Collection</button>
+      <label for="overwrite">
+        <input type="checkbox" id="overwrite" name="overwrite" value="true"> Overwrite existing data
+      </label>
+      <button type="submit" class="action-button">Import Collection</button>
     </form>
+    <div class="footer-bar">
+      <button onclick="location.href='/'" class="action-button">Back to Album List</button>
+    </div>
     <script>
       function confirmOverwrite() {
         const overwrite = document.getElementById('overwrite').checked;
@@ -398,6 +452,7 @@ app.post('/importCollection', async (req, res) => {
   if (overwrite) {
     // Drop the existing database file
     fs.unlinkSync('./vinyl.db'); // Remove the database file
+    console.log('Existing database file deleted.');
   }
 
   await importCollectionFromDiscogs(userId, token, overwrite);
