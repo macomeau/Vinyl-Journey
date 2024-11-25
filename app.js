@@ -94,6 +94,7 @@ const styles = `
     }
     h2 {
       color: #333;
+      margin: 0; /* Remove default margin */
     }
     a {
       color: #4CAF50;
@@ -113,6 +114,31 @@ const styles = `
     }
     .action-button:hover {
       background-color: #45a049; /* Darker green on hover */
+    }
+    /* Modern styles for sort and filter */
+    .sort-filter-container {
+      display: flex;
+      justify-content: center; /* Center the sort/filter controls */
+      align-items: center; /* Align items vertically */
+      margin-bottom: 20px; /* Space below the controls */
+    }
+    .sort-filter-container label {
+      margin-right: 10px; /* Space between label and dropdown */
+      font-weight: bold; /* Bold label */
+    }
+    .sort-filter-container select,
+    .sort-filter-container input {
+      padding: 10px; /* Padding for inputs */
+      border: 1px solid #ccc; /* Border for inputs */
+      border-radius: 5px; /* Rounded corners */
+      margin-right: 10px; /* Space between inputs */
+      font-size: 16px; /* Font size for inputs */
+      transition: border-color 0.3s; /* Smooth transition for border color */
+    }
+    .sort-filter-container select:focus,
+    .sort-filter-container input:focus {
+      border-color: #4CAF50; /* Change border color on focus */
+      outline: none; /* Remove default outline */
     }
     /* Card styles for the random album page */
     .random-album-card {
@@ -183,6 +209,34 @@ const styles = `
       flex-wrap: wrap; /* Allow wrapping to multiple rows */
       justify-content: space-around; /* Space between cards */
     }
+    .header-container {
+      display: flex;
+      justify-content: space-between; /* Space between title and sort controls */
+      align-items: center; /* Center vertically */
+      margin-bottom: 20px; /* Space below the header */
+    }
+    .sort-filter-container {
+      display: flex;
+      align-items: center; /* Center items vertically */
+    }
+    .sort-filter-container label {
+      margin-right: 5px; /* Space between label and dropdown */
+    }
+    .sort-filter-container select {
+      margin-right: 10px; /* Space between dropdowns */
+      padding: 5px; /* Padding for dropdowns */
+    }
+    .search-container {
+      text-align: center; /* Center the search input */
+      margin: 10px 0; /* Space above and below the search input */
+    }
+    .search-container input {
+      padding: 10px; /* Padding for the search input */
+      border: 1px solid #ccc; /* Border for the search input */
+      border-radius: 5px; /* Rounded corners */
+      width: 80%; /* Width of the search input */
+      max-width: 400px; /* Maximum width */
+    }
   </style>
 `;
 
@@ -211,8 +265,8 @@ app.get('/', async (req, res) => {
       
       let albumList = await Promise.all(rows.map(async (row) => {
         return `
-          <div class="root-album-card">
-            <h3>${row.artist} (${row.year})</h3> <!-- Updated to include release year -->
+          <div class="root-album-card" data-artist="${row.artist.toLowerCase()}" data-title="${row.title.toLowerCase()}">
+            <h3>${row.artist} (${row.year})</h3>
             ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover" style="width:100%;height:auto;">` : ''}
             <p>${row.title}</p>
             <p>
@@ -225,18 +279,24 @@ app.get('/', async (req, res) => {
       res.send(`
         ${styles}
         <h1 style="text-align: center;">Welcome to VinylJourney</h1>
-        <h2>My Albums (${albumCount}):</h2>
-        <div>
-          <label for="sort">Sort by:</label>
-          <select id="sort" onchange="sortAlbums()">
-            <option value="artist" ${sort === 'artist' ? 'selected' : ''}>Artist</option>
-            <option value="title" ${sort === 'title' ? 'selected' : ''}>Album Name</option>
-            <option value="year" ${sort === 'year' ? 'selected' : ''}>Release Year</option>
-          </select>
-          <select id="order" onchange="sortAlbums()">
-            <option value="ASC" ${order === 'ASC' ? 'selected' : ''}>Ascending</option>
-            <option value="DESC" ${order === 'DESC' ? 'selected' : ''}>Descending</option>
-          </select>
+        <div class="search-container" style="text-align: center; margin: 10px 0;">
+          <input type="text" id="search" placeholder="Search albums..." onkeyup="liveSearch()">
+        </div>
+        <div class="header-container" style="display: flex; justify-content: space-between; align-items: center;">
+          <h2>My Albums (${albumCount}):</h2>
+          <div class="sort-filter-container">
+            <label for="sort">Sort by:</label>
+            <select id="sort" onchange="sortAlbums()">
+              <option value="artist" ${sort === 'artist' ? 'selected' : ''}>Artist</option>
+              <option value="title" ${sort === 'title' ? 'selected' : ''}>Album Name</option>
+              <option value="year" ${sort === 'year' ? 'selected' : ''}>Release Year</option>
+            </select>
+            <label for="order">Order:</label>
+            <select id="order" onchange="sortAlbums()">
+              <option value="ASC" ${order === 'ASC' ? 'selected' : ''}>Ascending</option>
+              <option value="DESC" ${order === 'DESC' ? 'selected' : ''}>Descending</option>
+            </select>
+          </div>
         </div>
         <div class="album-list">${albumList.join('')}</div>
         <div class="footer-bar">
@@ -248,6 +308,21 @@ app.get('/', async (req, res) => {
             const sort = document.getElementById('sort').value;
             const order = document.getElementById('order').value;
             window.location.href = '/?sort=' + sort + '&order=' + order;
+          }
+
+          function liveSearch() {
+            const input = document.getElementById('search').value.toLowerCase();
+            const albumCards = document.querySelectorAll('.root-album-card');
+
+            albumCards.forEach(card => {
+              const artist = card.getAttribute('data-artist');
+              const title = card.getAttribute('data-title');
+              if (artist.includes(input) || title.includes(input)) {
+                card.style.display = '';
+              } else {
+                card.style.display = 'none';
+              }
+            });
           }
         </script>
       `);
