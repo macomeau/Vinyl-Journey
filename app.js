@@ -24,6 +24,7 @@ function createDatabase() {
   });
   createAlbumsTable(db); // Ensure albums table is created
   createNotesTable(db);   // Ensure notes table is created
+  createListeningsTable(db); // Ensure listenings table is created
   return db;
 }
 
@@ -66,6 +67,38 @@ function createNotesTable(db) {
   });
 }
 
+// Function to create the listenings table if it doesn't exist
+function createListeningsTable(db) {
+  db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS listenings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      album_id INTEGER,
+      listened_at TEXT,
+      comment TEXT,
+      FOREIGN KEY (album_id) REFERENCES albums (id)
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating listenings table:', err.message);
+      } else {
+        console.log('Listenings table checked/created successfully.');
+      }
+    });
+  });
+}
+
+// Function to add the comment column if it doesn't exist
+function addCommentColumn(db) {
+  db.serialize(() => {
+    db.run(`ALTER TABLE listenings ADD COLUMN comment TEXT`, (err) => {
+      if (err) {
+        console.error('Error adding comment column:', err.message);
+      } else {
+        console.log('Comment column added to listenings table successfully.');
+      }
+    });
+  });
+}
+
 // Function to import collection from Discogs
 async function importCollectionFromDiscogs(userId, token, overwrite) {
   const url = `https://api.discogs.com/users/${userId}/collection/folders/0/releases?token=${token}&page=1&per_page=100`;
@@ -77,8 +110,10 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
     console.log('API Response:', JSON.stringify(response.data, null, 2));
 
     const db = createDatabase();
+    addCommentColumn(db); // Call this function to add the comment column
     createAlbumsTable(db);
     createNotesTable(db);
+    createListeningsTable(db);
     console.log(`Total releases fetched from Discogs: ${releases.length}`);
     
     let newAlbumsCount = 0; // Counter for new albums imported
@@ -147,6 +182,7 @@ const styles = `
     h2 {
       color: #333;
       margin: 0; /* Remove default margin */
+      text-align: center; /* Center the subheader */
     }
     a {
       color: #4CAF50;
@@ -194,16 +230,12 @@ const styles = `
     }
     /* Card styles for the random album page */
     .random-album-card {
-      background: #fff;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      margin: 10px;
-      padding: 20px; /* Adjusted padding for tighter card */
-      text-align: center;
-      display: inline-block;
-      width: auto; /* Set width to auto to fit content */
-      max-width: 320px; /* Set a maximum width slightly wider than the album cover */
-      height: auto; /* Allow height to adjust based on content */
+      text-align: center; /* Center the content of the album card */
+      margin: 20px auto; /* Center the card with auto margins */
+      padding: 15px; /* Padding for the card */
+      background: #fff; /* White background for the card */
+      border-radius: 5px; /* Rounded corners */
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for depth */
     }
     .random-album-card h3 {
       margin: 10px 0; /* Reduced margin for tighter spacing */
@@ -215,8 +247,8 @@ const styles = `
     }
     .random-album-card img {
       max-width: 100%; /* Ensure the image does not exceed the card width */
-      max-height: 300px; /* Set a maximum height for the image */
-      object-fit: cover; /* Maintain aspect ratio and cover the area */
+      height: auto; /* Maintain aspect ratio */
+      border-radius: 5px; /* Rounded corners for the image */
     }
     /* Card styles for the root page */
     .root-album-card {
@@ -319,6 +351,37 @@ const styles = `
     input[type="checkbox"] {
       width: auto; /* Auto width for checkbox */
       margin-right: 10px; /* Space to the right of the checkbox */
+    }
+    .comment-container {
+      background: #fff; /* White background for comments */
+      border-radius: 5px; /* Rounded corners */
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for depth */
+      margin: 10px 0; /* Space between comments */
+      padding: 15px; /* Padding inside the comment box */
+      transition: transform 0.2s; /* Smooth transition for hover effect */
+    }
+    .comment-container:hover {
+      transform: scale(1.02); /* Slightly enlarge on hover */
+    }
+    .comment-text {
+      font-size: 1.1em; /* Slightly larger font for comments */
+      margin: 0; /* Remove default margin */
+    }
+    .comment-timestamp {
+      font-size: 0.9em; /* Smaller font for timestamp */
+      color: #777; /* Lighter color for timestamp */
+      margin-top: 5px; /* Space above the timestamp */
+    }
+    .listening-card {
+      background: #fff; /* White background for the card */
+      border-radius: 5px; /* Rounded corners */
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Shadow for depth */
+      margin: 10px 0; /* Space between cards */
+      padding: 15px; /* Padding inside the card */
+      transition: transform 0.2s; /* Smooth transition for hover effect */
+    }
+    .listening-card:hover {
+      transform: scale(1.02); /* Slightly enlarge on hover */
     }
   </style>
 `;
@@ -473,46 +536,123 @@ app.get('/albumNotes/:id', (req, res) => {
       return res.send('Album not found.');
     }
 
-    // Fetch notes from the database
-    db.all('SELECT * FROM notes WHERE album_id = ?', [albumId], (err, notes) => {
+    // Fetch listenings from the database, sorted by listened_at in descending order
+    db.all('SELECT * FROM listenings WHERE album_id = ? ORDER BY listened_at DESC', [albumId], (err, listenings) => {
       if (err) {
         console.error(err.message);
         return res.status(500).send('Database error');
       }
 
-      const notesList = notes.map(note => `
-        <div>
-          <p>${note.text}</p>
-          <small>Posted on: ${note.timestamp}</small> <!-- Display the local timestamp -->
+      // Limit the number of entries to show initially (5 for 1 row)
+      const initialEntries = listenings.slice(0, 5);
+      const totalEntries = listenings.length;
+
+      const listeningsCards = initialEntries.map(listening => `
+        <div class="listening-card" data-listened-at="${listening.listened_at}">
+          <strong>Listened On:</strong> <span class="listened-time"></span><br>
+          <strong>Comment:</strong> ${listening.comment || 'No Comments.'}
         </div>
       `).join('');
 
       res.send(`
         ${styles}
+        <style>
+          .listening-card {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0; /* Margin for spacing between cards */
+            width: 100%; /* Full width for a single card per row */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+          }
+          .listening-card:hover {
+            transform: scale(1.02); /* Slightly enlarge on hover */
+          }
+          #listeningCards {
+            display: flex;
+            flex-direction: column; /* Stack cards vertically */
+            align-items: stretch; /* Ensure cards take full width */
+          }
+          .button-container {
+            text-align: center; /* Center buttons */
+            margin: 20px 0; /* Add margin for spacing */
+          }
+        </style>
         <head>
           <title>Vinyl Journey</title>
         </head>
-        <h1>Leave Notes for ${row.title} by ${row.artist}</h1>
+        <h1>Leave Comments for ${row.title} by ${row.artist}</h1>
         <div class="random-album-card">
           <h3>${row.artist} (${row.year})</h3>
           ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover">` : ''}
-          <p>${row.title}</p>
+          <div style="text-align: center; width: 50%; margin: 0 auto;">
+            <label for="comment">Your Comment:</label>
+            <textarea id="comment" rows="4" style="width: 100%;"></textarea>
+          </div>
+          <button onclick="handleListenedTo('${albumId}')" class="action-button">Listened To</button>
         </div>
-        <form id="notesForm" action="/saveNotes/${albumId}" method="POST">
-          <label for="notes">Your Notes:</label>
-          <textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea>
-          <input type="hidden" id="timestamp" name="timestamp">
-          <button type="submit" class="action-button">Save Notes</button>
-        </form>
-        <h2>Your Notes:</h2>
-        <div>${notesList || 'No notes yet.'}</div>
+        <h2>Listening History:</h2>
+        <div id="listeningHistory">
+          <h3>Listening History:</h3>
+          <div id="listeningCards">
+            ${listeningsCards || '<div>No listenings recorded yet.</div>'}
+          </div>
+          <div class="button-container">
+            ${totalEntries > 5 ? `<button id="loadMore" class="action-button" onclick="loadMore()">More</button>` : ''}
+          </div>
+        </div>
         <div class="footer-bar">
           <button onclick="location.href='/'" class="action-button">Back to Album List</button>
         </div>
         <script>
-          // Set the timestamp in local timezone when the form is loaded
-          const localDate = new Date();
-          document.getElementById('timestamp').value = localDate.toString(); // Store as local time string
+          // Function to format the listened time in local timezone
+          function formatLocalTime() {
+            const cards = document.querySelectorAll('.listening-card');
+            cards.forEach(card => {
+              const listenedAt = card.getAttribute('data-listened-at');
+              const localTime = new Date(listenedAt).toLocaleString(); // Format to local timezone
+              card.querySelector('.listened-time').textContent = localTime; // Set the formatted time
+            });
+          }
+
+          let currentCount = 5; // Track the current number of displayed entries
+
+          // Call the function to format the time after the DOM is loaded
+          document.addEventListener('DOMContentLoaded', formatLocalTime);
+
+          // Function to handle the Listened To action
+          function handleListenedTo(albumId) {
+            const comment = document.getElementById('comment').value || 'No Comments.'; // Default to 'No Comments.' if empty
+            location.href = '/listenedTo/' + albumId + '?comment=' + encodeURIComponent(comment);
+          }
+
+          // Function to load more entries
+          function loadMore() {
+            const allEntries = ${JSON.stringify(listenings)}; // Pass all entries to the client
+            const newEntries = allEntries.slice(currentCount, currentCount + 5); // Load 5 more entries
+            const cardsContainer = document.getElementById('listeningCards');
+
+            newEntries.forEach(listening => {
+              const card = document.createElement('div');
+              card.className = 'listening-card';
+              card.setAttribute('data-listened-at', listening.listened_at);
+              card.innerHTML = '<strong>Listened On:</strong> <span class="listened-time"></span><br>' +
+                              '<strong>Comment:</strong> ' + (listening.comment || 'No Comments.');
+              cardsContainer.appendChild(card);
+            });
+
+            currentCount += newEntries.length; // Update the current count
+
+            // Call the function to format the time for new entries
+            formatLocalTime();
+
+            // Hide the "More" button if there are no more entries
+            if (currentCount >= allEntries.length) {
+              document.getElementById('loadMore').style.display = 'none';
+            }
+          }
         </script>
       `);
     });
@@ -568,19 +708,24 @@ app.post('/importCollection', async (req, res) => {
   }
 });
 
-// Handle saving notes
-app.post('/saveNotes/:id', (req, res) => {
+// Route to handle the listened to button click
+app.get('/listenedTo/:id', (req, res) => {
   const albumId = req.params.id;
-  const notes = req.body.notes;
-  const timestamp = req.body.timestamp; // Get the timestamp from the form
-
   const db = createDatabase();
-  db.run(`INSERT INTO notes (album_id, text, timestamp) VALUES (?, ?, ?)`, [albumId, notes, timestamp], function(err) {
+
+  const listenedAt = new Date().toISOString(); // Get the current timestamp
+  const comment = req.query.comment; // Get the comment from the query string
+
+  console.log(`Received comment: ${comment}`); // Log the received comment
+
+  // Insert the listening record with the comment
+  db.run(`INSERT INTO listenings (album_id, listened_at, comment) VALUES (?, ?, ?)`, [albumId, listenedAt, comment], function(err) {
     if (err) {
-      console.error('Error saving notes:', err.message);
+      console.error('Error recording listening:', err.message);
       return res.status(500).send('Database error');
     }
-    console.log(`Notes saved for album ID ${albumId}: ${notes} (Timestamp: ${timestamp})`);
+
+    console.log(`Recorded listening for album ID ${albumId} at ${listenedAt} with comment: ${comment}`);
     res.redirect(`/albumNotes/${albumId}`); // Redirect back to the album notes page
   });
 });
