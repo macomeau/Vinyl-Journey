@@ -311,7 +311,6 @@ app.get('/', async (req, res) => {
   console.log('Accessing root route');
   const db = createDatabase();
   createAlbumsTable(db);
-  createNotesTable(db);
   
   // Get the sort parameter from the query string
   const sort = req.query.sort || 'artist'; // Default sort by artist
@@ -350,6 +349,9 @@ app.get('/', async (req, res) => {
       // Update the header to include the new title
       res.send(`
         ${styles}
+        <head>
+          <title>Vinyl Journey</title>
+        </head>
         <h1 style="text-align: center;">Welcome to VinylJourney</h1>
         <div class="search-container" style="text-align: center; margin: 10px 0;">
           <input type="text" id="search" placeholder="Search albums..." onkeyup="liveSearch()">
@@ -439,7 +441,7 @@ app.get('/randomAlbum', async (req, res) => {
   });
 });
 
-// Route to display album notes with saved notes
+// Route to display album notes
 app.get('/albumNotes/:id', (req, res) => {
   const albumId = req.params.id;
   const db = createDatabase();
@@ -470,6 +472,9 @@ app.get('/albumNotes/:id', (req, res) => {
 
       res.send(`
         ${styles}
+        <head>
+          <title>Vinyl Journey</title>
+        </head>
         <h1>Leave Notes for ${row.title} by ${row.artist}</h1>
         <div class="random-album-card">
           <h3>${row.artist} (${row.year})</h3>
