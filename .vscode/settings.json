@@ -1,0 +1,11 @@
+{
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "Vinyl DB",
+            "database": "${workspaceFolder:Vinyl-Journey}/vinyl.db"
+        }
+    ]
+}

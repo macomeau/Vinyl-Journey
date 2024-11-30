@@ -22,6 +22,8 @@ function createDatabase() {
     }
     console.log('Connected to the vinyl database.');
   });
+  createAlbumsTable(db); // Ensure albums table is created
+  createNotesTable(db);   // Ensure notes table is created
   return db;
 }
 
@@ -45,6 +47,25 @@ function createAlbumsTable(db) {
   });
 }
 
+// Function to create the notes table if it doesn't exist
+function createNotesTable(db) {
+  db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      album_id INTEGER,
+      text TEXT,
+      timestamp TEXT,
+      FOREIGN KEY (album_id) REFERENCES albums (id)
+    )`, (err) => {
+      if (err) {
+        console.error('Error creating notes table:', err.message);
+      } else {
+        console.log('Notes table checked/created successfully.');
+      }
+    });
+  });
+}
+
 // Function to import collection from Discogs
 async function importCollectionFromDiscogs(userId, token, overwrite) {
   const url = `https://api.discogs.com/users/${userId}/collection/folders/0/releases?token=${token}&page=1&per_page=100`;
@@ -58,6 +79,7 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
 
     const db = createDatabase();
     createAlbumsTable(db);
+    createNotesTable(db);
     console.log(`Total releases fetched from Discogs: ${releases.length}`);
     
     // Iterate through each release and extract relevant information
@@ -289,6 +311,7 @@ app.get('/', async (req, res) => {
   console.log('Accessing root route');
   const db = createDatabase();
   createAlbumsTable(db);
+  createNotesTable(db);
   
   // Get the sort parameter from the query string
   const sort = req.query.sort || 'artist'; // Default sort by artist
@@ -314,7 +337,9 @@ app.get('/', async (req, res) => {
         return `
           <div class="root-album-card" data-artist="${row.artist.toLowerCase()}" data-title="${row.title.toLowerCase()}">
             <h3>${row.artist} (${row.year})</h3>
-            ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover" style="width:100%;height:auto;">` : ''}
+            <a href="/albumNotes/${row.id}">
+              ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover" style="width:100%;height:auto;">` : ''}
+            </a>
             <p>${row.title}</p>
             <p>
               <a class="discogs-button" href="${row.discogs_url}" target="_blank">View on Discogs</a>
@@ -382,6 +407,7 @@ app.get('/randomAlbum', async (req, res) => {
   console.log('Accessing random album route');
   const db = createDatabase();
   createAlbumsTable(db);
+  createNotesTable(db);
 
   db.all('SELECT * FROM albums ORDER BY RANDOM() LIMIT 1', [], (err, rows) => {
     if (err) {
@@ -402,6 +428,7 @@ app.get('/randomAlbum', async (req, res) => {
           <p>
             <a class="discogs-button" href="${row.discogs_url}" target="_blank">View on Discogs</a>
           </p>
+          <button onclick="location.href='/albumNotes/${row.id}'" class="action-button">Listen & Leave Notes</button>
         </div>
       </div>
       <div class="footer-bar">
@@ -409,6 +436,60 @@ app.get('/randomAlbum', async (req, res) => {
         <button onclick="location.href='/'" class="action-button">Back to Album List</button>
       </div>
     `);
+  });
+});
+
+// Route to display album notes with saved notes
+app.get('/albumNotes/:id', (req, res) => {
+  const albumId = req.params.id;
+  const db = createDatabase();
+  createAlbumsTable(db);
+  createNotesTable(db);
+
+  db.get('SELECT * FROM albums WHERE id = ?', [albumId], (err, row) => {
+    if (err) {
+      console.error(err.message);
+      return res.status(500).send('Database error');
+    }
+    if (!row) {
+      return res.send('Album not found.');
+    }
+
+    // Fetch notes from the database (assuming you have a notes table)
+    db.all('SELECT * FROM notes WHERE album_id = ?', [albumId], (err, notes) => {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).send('Database error');
+      }
+
+      const notesList = notes.map(note => `
+        <div>
+          <p>${note.text}</p>
+          <small>Posted on: ${new Date(note.timestamp).toLocaleString()}</small>
+        </div>
+      `).join('');
+
+      res.send(`
+        ${styles}
+        <h1>Leave Notes for ${row.title} by ${row.artist}</h1>
+        <div class="random-album-card">
+          <h3>${row.artist} (${row.year})</h3>
+          ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover">` : ''}
+          <p>${row.title}</p>
+        </div>
+        <form id="notesForm" action="/saveNotes/${albumId}" method="POST">
+          <label for="notes">Your Notes:</label>
+          <textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea>
+          <input type="hidden" id="timestamp" name="timestamp" value="${new Date().toISOString()}">
+          <button type="submit" class="action-button">Save Notes</button>
+        </form>
+        <h2>Your Notes:</h2>
+        <div>${notesList || 'No notes yet.'}</div>
+        <div class="footer-bar">
+          <button onclick="location.href='/'" class="action-button">Back to Album List</button>
+        </div>
+      `);
+    });
   });
 });
 
@@ -457,6 +538,23 @@ app.post('/importCollection', async (req, res) => {
 
   await importCollectionFromDiscogs(userId, token, overwrite);
   res.redirect('/'); // Redirect to the root page after importing
+});
+
+// Handle saving notes
+app.post('/saveNotes/:id', (req, res) => {
+  const albumId = req.params.id;
+  const notes = req.body.notes;
+  const timestamp = req.body.timestamp; // Get the timestamp from the form
+
+  const db = createDatabase();
+  db.run(`INSERT INTO notes (album_id, text, timestamp) VALUES (?, ?, ?)`, [albumId, notes, timestamp], function(err) {
+    if (err) {
+      console.error('Error saving notes:', err.message);
+      return res.status(500).send('Database error');
+    }
+    console.log(`Notes saved for album ID ${albumId}: ${notes} (Timestamp: ${timestamp})`);
+    res.redirect(`/albumNotes/${albumId}`); // Redirect back to the album notes page
+  });
 });
 
 // Start the server
