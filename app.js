@@ -74,7 +74,6 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
     const response = await axios.get(url);
     const releases = response.data.releases;
 
-    // Log the entire response to inspect its structure
     console.log('API Response:', JSON.stringify(response.data, null, 2));
 
     const db = createDatabase();
@@ -82,33 +81,51 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
     createNotesTable(db);
     console.log(`Total releases fetched from Discogs: ${releases.length}`);
     
-    // Iterate through each release and extract relevant information
-    for (const release of releases) {
-      const artist = release.basic_information.artists[0].name; // Get the artist name
-      const title = release.basic_information.title; // Get the album title
-      const year = release.basic_information.year; // Get the release year
-      const coverImage = release.basic_information.cover_image; // Get the cover image URL
-      const id = release.basic_information.id; // Get the Discogs ID
+    let newAlbumsCount = 0; // Counter for new albums imported
 
-      // Construct the Discogs URL
+    for (const release of releases) {
+      const artist = release.basic_information.artists[0].name;
+      const title = release.basic_information.title;
+      const year = release.basic_information.year;
+      const coverImage = release.basic_information.cover_image;
+      const id = release.basic_information.id;
+
+      const existingAlbum = await new Promise((resolve, reject) => {
+        db.get('SELECT * FROM albums WHERE discogs_url = ?', [`https://www.discogs.com/release/${id}-${title.replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`], (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row);
+          }
+        });
+      });
+
+      if (existingAlbum) {
+        console.log(`Album already exists: ${artist} - ${title}. Skipping import.`);
+        continue;
+      }
+
       const discogsUrl = `https://www.discogs.com/release/${id}-${title.replace(/\s+/g, '-').replace(/[^\w-]/g, '')}`;
 
-      // Debugging log to check values being imported
       console.log(`Importing album: ${artist} - ${title}, Cover Image: ${coverImage}, Discogs URL: ${discogsUrl}`);
 
-      // Insert or replace the album record in the database
-      db.run(`INSERT OR REPLACE INTO albums (artist, title, year, cover_image, discogs_url) VALUES (?, ?, ?, ?, ?)`, 
+      db.run(`INSERT INTO albums (artist, title, year, cover_image, discogs_url) VALUES (?, ?, ?, ?, ?)`, 
         [artist, title, year, coverImage, discogsUrl], (err) => {
           if (err) {
             console.error('Error inserting or updating album:', err.message);
           } else {
             console.log(`Album imported: ${artist} - ${title}`);
+            newAlbumsCount++;
           }
       });
     }
-    db.close(); // Close the database connection
+    db.close();
+
+    // Return the count of new albums imported
+    return newAlbumsCount; // Return the count instead of using alert
   } catch (error) {
     console.error('Error fetching collection from Discogs:', error);
+    throw error; // Rethrow the error to handle it in the calling function
   }
 }
 
@@ -533,20 +550,22 @@ app.get('/importCollection', (req, res) => {
   `);
 });
 
-// Handle form submission for importing collection
+// Route to handle the import request
 app.post('/importCollection', async (req, res) => {
-  const userId = req.body.userId;
-  const token = req.body.token;
-  const overwrite = req.body.overwrite === 'true'; // Convert to boolean
-
-  if (overwrite) {
-    // Drop the existing database file
-    fs.unlinkSync('./vinyl.db'); // Remove the database file
-    console.log('Existing database file deleted.');
+  const { userId, token, overwrite } = req.body;
+  try {
+    const newAlbumsCount = await importCollectionFromDiscogs(userId, token, overwrite);
+    // Send a response back to the client
+    res.send(`
+      <script>
+        alert('${newAlbumsCount} new album(s) imported successfully!');
+        window.location.href = '/'; // Redirect to the home page or wherever you want
+      </script>
+    `);
+  } catch (error) {
+    console.error('Error during import:', error);
+    res.status(500).send('An error occurred during the import process.');
   }
-
-  await importCollectionFromDiscogs(userId, token, overwrite);
-  res.redirect('/'); // Redirect to the root page after importing
 });
 
 // Handle saving notes
