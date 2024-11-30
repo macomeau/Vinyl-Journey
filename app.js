@@ -444,7 +444,6 @@ app.get('/albumNotes/:id', (req, res) => {
   const albumId = req.params.id;
   const db = createDatabase();
   createAlbumsTable(db);
-  createNotesTable(db);
 
   db.get('SELECT * FROM albums WHERE id = ?', [albumId], (err, row) => {
     if (err) {
@@ -455,7 +454,7 @@ app.get('/albumNotes/:id', (req, res) => {
       return res.send('Album not found.');
     }
 
-    // Fetch notes from the database (assuming you have a notes table)
+    // Fetch notes from the database
     db.all('SELECT * FROM notes WHERE album_id = ?', [albumId], (err, notes) => {
       if (err) {
         console.error(err.message);
@@ -465,7 +464,7 @@ app.get('/albumNotes/:id', (req, res) => {
       const notesList = notes.map(note => `
         <div>
           <p>${note.text}</p>
-          <small>Posted on: ${new Date(note.timestamp).toLocaleString()}</small>
+          <small>Posted on: ${note.timestamp}</small> <!-- Display the local timestamp -->
         </div>
       `).join('');
 
@@ -480,7 +479,7 @@ app.get('/albumNotes/:id', (req, res) => {
         <form id="notesForm" action="/saveNotes/${albumId}" method="POST">
           <label for="notes">Your Notes:</label>
           <textarea id="notes" name="notes" rows="4" style="width: 100%;"></textarea>
-          <input type="hidden" id="timestamp" name="timestamp" value="${new Date().toISOString()}">
+          <input type="hidden" id="timestamp" name="timestamp">
           <button type="submit" class="action-button">Save Notes</button>
         </form>
         <h2>Your Notes:</h2>
@@ -488,6 +487,11 @@ app.get('/albumNotes/:id', (req, res) => {
         <div class="footer-bar">
           <button onclick="location.href='/'" class="action-button">Back to Album List</button>
         </div>
+        <script>
+          // Set the timestamp in local timezone when the form is loaded
+          const localDate = new Date();
+          document.getElementById('timestamp').value = localDate.toString(); // Store as local time string
+        </script>
       `);
     });
   });
