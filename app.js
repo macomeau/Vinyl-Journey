@@ -510,7 +510,7 @@ app.get('/randomAlbum', async (req, res) => {
           <p>
             <a class="discogs-button" href="${row.discogs_url}" target="_blank">View on Discogs</a>
           </p>
-          <button onclick="location.href='/albumNotes/${row.id}'" class="action-button">Listen & Leave Notes</button>
+          <button onclick="location.href='/albumNotes/${row.id}'" class="action-button">Listen</button>
         </div>
       </div>
       <div class="footer-bar">
