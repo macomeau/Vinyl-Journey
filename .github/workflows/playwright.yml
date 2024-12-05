@@ -10,23 +10,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-
-    # services:
-    #   web:
-    #     image: node:14
-    #     ports:
-    #       - 3333:3333
-    #     options: >-
-    #       --health-cmd="curl --fail http://localhost:3333 || exit 1"
-    #       --health-interval=10s
-    #       --health-timeout=5s
-    #       --health-retries=3
-    
+    runs-on: ubuntu-latest    
     steps:
       - uses: actions/checkout@v2
       - name: Build the stack
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Install dependencies
         run: npm install
