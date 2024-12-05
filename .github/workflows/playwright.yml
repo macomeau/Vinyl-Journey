@@ -9,20 +9,15 @@ on:
       - main
 
 jobs:
-  test:
+  server:
     runs-on: ubuntu-latest    
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
       - name: Build the stack
         run: docker compose up -d
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Start server
-        run: npm run
-        env:
-          CI: true
 
       - name: Wait for server to be ready
         run: sleep 20
