@@ -20,7 +20,7 @@ jobs:
         run: npm install
 
       - name: Start server
-        run: npm start &
+        run: npm run
         env:
           CI: true
 
