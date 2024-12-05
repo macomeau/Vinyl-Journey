@@ -177,7 +177,7 @@ label {
   font-weight: bold;
 }
 
-input[type="text"], input[type="checkbox"] {
+input[type="text"], input[type="password"], input[type="checkbox"] {
   width: 100%;
   padding: 10px;
   border: 1px solid #ccc;
@@ -188,6 +188,11 @@ input[type="text"], input[type="checkbox"] {
 }
 
 input[type="text"]:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+input[type="password"]:focus {
   border-color: #4CAF50;
   outline: none;
 }

@@ -13,9 +13,6 @@ async function importCollectionFromDiscogs(userId, token, overwrite) {
     const db = createDatabase();
     console.log('Database created successfully.');
 
-    // addCommentColumn(db);
-    // console.log('Comment column checked/added.');
-
     createAlbumsTable(db);
     console.log('Albums table created/checked.');
 

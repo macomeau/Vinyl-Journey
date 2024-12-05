@@ -15,7 +15,7 @@ router.get('/', (req, res) => {
       <label for="userId">Discogs User ID:</label>
       <input type="text" id="userId" name="userId" required>
       <label for="token">Discogs API Token:</label>
-      <input type="text" id="token" name="token" required>
+      <input type="password" id="token" name="token" required>
       <label for="overwrite">
         <input type="checkbox" id="overwrite" name="overwrite" value="true"> Overwrite existing data
       </label>
