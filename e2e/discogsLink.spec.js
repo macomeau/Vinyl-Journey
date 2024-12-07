@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Vinyl Journey Application - Discogs Link', () => {
   test('should open Discogs page in a new tab', async ({ page, context }) => {
-    await page.goto('http://localhost:3333/randomAlbum');
+    await page.goto('http://app:3333/randomAlbum');
 
     const [newPage] = await Promise.all([
       context.waitForEvent('page'), // Wait for the new page to open
