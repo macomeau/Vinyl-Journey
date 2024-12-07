@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node app.js",
-    "test:playwright": "playwright test"
+    "test:playwright": "playwright test --project=webkit"
   },
   "keywords": [],
   "author": "",
