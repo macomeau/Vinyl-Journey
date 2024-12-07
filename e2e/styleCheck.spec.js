@@ -4,7 +4,8 @@ test.describe('Vinyl Journey Application - Style Checks', () => {
   const pages = [
     { url: 'http://localhost:3333', name: 'Homepage' },
     { url: 'http://localhost:3333/randomAlbum', name: 'Random Album' },
-    { url: 'http://localhost:3333/albumNotes/1', name: 'Album Notes' } // Example album ID
+    { url: 'http://localhost:3333/albumNotes/1', name: 'Album Notes' }, // Example album ID
+    { url: 'http://localhost:3333/importCollection', name: 'Import Collection' }
   ];
 
   pages.forEach(({ url, name }) => {
