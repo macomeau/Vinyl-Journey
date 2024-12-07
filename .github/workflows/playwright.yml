@@ -21,6 +21,11 @@ jobs:
       run: npm ci
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
+    - name: Wait for server to be ready
+      run: |
+        echo "Waiting for server to start..."
+        timeout 60s bash -c "until echo > /dev/tcp/0.0.0.0/3333; do sleep 1; done"
+      shell: bash
     - name: Run Playwright tests
       run: npx playwright test
     - uses: actions/upload-artifact@v4
