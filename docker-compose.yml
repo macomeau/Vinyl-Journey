@@ -1,20 +1,26 @@
+version: '3.8'
+
 services:
   app:
     build: .
     ports:
-      - "3333:3333" # Map port 3333 on the host to port 3333 in the container
-    volumes:
-      - .:/usr/src/app # Mount the current directory to the container for live updates
+      - "3333:3333"
     environment:
-      - NODE_ENV=development # Set the environment variable for development
-  
-  tests:
-    image: mcr.microsoft.com/playwright:v1.49.0-jammy 
+      - NODE_ENV=development
+    # Ensure your app is ready before tests start
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3333"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.49.0-jammy
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     volumes:
-      - .:/app
-    working_dir: /app
-    command: ["npm", "run", "test:playwright"]
-    environment:
-      - PLAYWRIGHT_SERVICE_URL=http://app:3333
+      - .:/workspace
+    working_dir: /workspace
+    entrypoint: ["npm", "run", "test:playwright"]
