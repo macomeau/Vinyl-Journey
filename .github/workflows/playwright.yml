@@ -30,7 +30,7 @@ jobs:
 
       - name: Wait for server to be ready
         run: |
-          timeout 15s bash -c "until echo > /dev/tcp/localhost/3000; do sleep 1; done"
+          timeout 15s bash -c "until echo > /dev/tcp/localhost/3333; do sleep 1; done"
         shell: bash
 
       - name: Install dependencies
