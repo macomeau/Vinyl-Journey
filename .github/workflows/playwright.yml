@@ -12,6 +12,13 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:latest
+        options: --privileged # Required for Docker in Docker
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+
     steps:
     - uses: actions/checkout@v4
     - name: Build the stack
