@@ -18,33 +18,41 @@ jobs:
         options: --privileged # Required for Docker in Docker
         volumes:
           - /var/run/docker.sock:/var/run/docker.sock
+    container:
+      image: mcr.microsoft.com/playwright:latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the stack
-      run: docker compose up -d
+      ## Checkout the code
+      - name: Checkout the code
+        uses: actions/checkout@v4
 
-    ## Wait for server to be ready
-    - name: Wait for server to be ready
-      run: |
-        echo "Waiting for server to start..."
-        timeout 60s bash -c "until echo > /dev/tcp/localhost/3333; do sleep 1; done"
-      shell: bash
-      
-      ## Setup for playwright tests
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      ## Build the stack
+      - name: Build the stack
+        run: docker compose up -d
 
-      ## Run Playwright tests
-    - name: Run Playwright tests
-      run: npm run test:playwright -- --timeout=10000
+      # ## Wait for server to be ready
+      # - name: Wait for server to be ready
+      #   run: |
+      #     echo "Waiting for server to start..."
+      #     timeout 60s bash -c "until echo > /dev/tcp/localhost/3333; do sleep 1; done"
+      #   shell: bash
+        
+      # ## Setup for playwright tests
+      # - name: Install dependencies
+      #   run: npm ci
 
-      ## Upload artifacts
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      # ## Install Playwright Browsers
+      # - name: Install Playwright Browsers
+      #   run: npx playwright install --with-deps
+
+      # ## Run Playwright tests
+      # - name: Run Playwright tests
+      #   run: npm run test:playwright -- --timeout=5000
+
+      # ## Upload artifacts
+      # - uses: actions/upload-artifact@v4
+      #   if: ${{ !cancelled() }}
+      #   with:
+      #     name: playwright-report
+      #     path: playwright-report/
+      #     retention-days: 30

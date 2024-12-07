@@ -9,3 +9,14 @@ services:
       - .:/usr/src/app # Mount the current directory to the container for live updates
     environment:
       - NODE_ENV=development # Set the environment variable for development
+  
+  tests:
+    image: mcr.microsoft.com/playwright:v1.49.0-jammy 
+    depends_on:
+      - app
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["npm", "run", "test:playwright"]
+    environment:
+      - PLAYWRIGHT_SERVICE_URL=http://app:3333
