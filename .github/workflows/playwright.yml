@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  server:
+  setup_and_test:
     runs-on: ubuntu-latest    
     steps:
       - name: Checkout repository
@@ -40,7 +40,6 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: playwright-report/
