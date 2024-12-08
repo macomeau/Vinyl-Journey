@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { importCollectionFromDiscogs } = require('../utils/discogs');
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+});
 
 // Route to display the import form
-router.get('/', (req, res) => {
+router.get('/', limiter, (req, res) => {
   console.log('Accessing import collection route');
   res.send(`
     <head>

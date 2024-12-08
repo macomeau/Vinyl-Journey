@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const { createDatabase } = require('../db/database');
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+});
 
 // Route to display a random album
-router.get('/', async (req, res) => {
+router.get('/', limiter, async (req, res) => {
   console.log('Accessing random album route');
   const db = createDatabase();
 

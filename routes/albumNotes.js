@@ -2,9 +2,16 @@ const express = require('express');
 const router = express.Router();
 const { createDatabase } = require('../db/database');
 const escape = require('escape-html');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+});
 
 // Route to display album notes
-router.get('/:id', (req, res) => {
+router.get('/:id', limiter, (req, res) => {
   const albumId = escape(req.params.id);
   const db = createDatabase();
 
