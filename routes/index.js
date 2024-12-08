@@ -8,8 +8,10 @@ router.get('/', async (req, res) => {
   const db = createDatabase();
   
   // Get the sort parameter from the query string
-  const sort = req.query.sort || 'artist'; // Default sort by artist
-  const order = req.query.order || 'ASC'; // Default order ascending
+  const validSortColumns = ['artist', 'title', 'year']; // Whitelist of valid sort columns
+  const validOrderValues = ['ASC', 'DESC']; // Whitelist of valid order values
+  const sort = validSortColumns.includes(req.query.sort) ? req.query.sort : 'artist'; // Default sort by artist
+  const order = validOrderValues.includes(req.query.order) ? req.query.order : 'ASC'; // Default order ascending
 
   // Query to get the total count of albums
   db.all('SELECT COUNT(*) AS count FROM albums', [], async (err, countResult) => {
