@@ -2,6 +2,10 @@ const axios = require('axios');
 const { createDatabase, createAlbumsTable, createNotesTable, createListeningsTable } = require('../db/database');
 
 async function importCollectionFromDiscogs(userId, token, overwrite) {
+  const userIdPattern = /^[a-zA-Z0-9_-]+$/;
+  if (!userIdPattern.test(userId)) {
+    throw new Error('Invalid userId format');
+  }
   const url = `https://api.discogs.com/users/${userId}/collection/folders/0/releases?token=${token}&page=1&per_page=500`;
   try {
     console.log(`Fetching collection from Discogs for user: ${userId}`);
