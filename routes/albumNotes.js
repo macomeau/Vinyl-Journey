@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { createDatabase } = require('../db/database');
+const escape = require('escape-html');
 
 // Route to display album notes
 router.get('/:id', (req, res) => {
-  const albumId = req.params.id;
+  const albumId = escape(req.params.id);
   const db = createDatabase();
 
   db.get('SELECT * FROM albums WHERE id = ?', [albumId], (err, row) => {
