@@ -16,6 +16,7 @@ VinylJourney is a web application that allows users to manage their vinyl album 
 - SQLite3
 - Axios
 - Body-parser
+- Playwright
 
 ## Images
 
