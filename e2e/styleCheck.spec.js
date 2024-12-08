@@ -1,11 +1,14 @@
 const { test, expect } = require('@playwright/test');
+require('dotenv').config();
+
+const appUrl = process.env.APP_URL || 'http://localhost:3333';
 
 test.describe('Vinyl Journey Application - Style Checks', () => {
   const pages = [
-    { url: 'http://app:3333', name: 'Homepage' },
-    { url: 'http://app:3333/randomAlbum', name: 'Random Album' },
-    { url: 'http://app:3333/albumNotes/1', name: 'Album Notes' }, // Example album ID
-    { url: 'http://app:3333/importCollection', name: 'Import Collection' }
+    { url: `${appUrl}`, name: 'Homepage' },
+    { url: `${appUrl}/randomAlbum`, name: 'Random Album' },
+    { url: `${appUrl}/albumNotes/1`, name: 'Album Notes' }, // Example album ID (Assumes at least one album exists)
+    { url: `${appUrl}/importCollection`, name: 'Import Collection' }
   ];
 
   pages.forEach(({ url, name }) => {

@@ -14,12 +14,12 @@ router.get('/', (req, res) => {
     <form id="importForm" action="/importCollection" method="POST" onsubmit="return confirmOverwrite();">
       <label for="userId">Discogs User ID:</label>
       <input type="text" id="userId" name="userId" required>
-      <label for="token">Discogs API Token:</label>
-      <input type="password" id="token" name="token" required>
+      <label for="apiToken">Discogs API Token:</label>
+      <input type="password" id="apiToken" name="apiToken" required>
       <label for="overwrite">
         <input type="checkbox" id="overwrite" name="overwrite" value="true"> Overwrite existing data
       </label>
-      <button type="submit" class="action-button">Import Collection</button>
+      <button type="submit" class="action-button" name="importButton">Import Collection</button>
     </form>
     <div class="footer-bar">
       <button onclick="location.href='/'" class="action-button">Back to Album List</button>
@@ -38,11 +38,11 @@ router.get('/', (req, res) => {
 
 // Route to handle the import request
 router.post('/', async (req, res) => {
-  const { userId, token, overwrite } = req.body;
+  const { userId, apiToken, overwrite } = req.body;
   try {
-    const newAlbumsCount = await importCollectionFromDiscogs(userId, token, overwrite);
+    const newAlbumsCount = await importCollectionFromDiscogs(userId, apiToken, overwrite);
     res.send(`
-      <script>
+      <script name="importAlert">
         alert('${newAlbumsCount} new album(s) imported successfully!');
         window.location.href = '/';
       </script>

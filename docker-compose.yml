@@ -17,6 +17,8 @@ services:
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.49.0-jammy
+    environment:
+      - APP_URL=http://app:3333
     depends_on:
       app:
         condition: service_healthy
