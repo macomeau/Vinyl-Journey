@@ -49,6 +49,10 @@ router.get('/:id', limiter, (req, res) => {
         <div class="random-album-card">
           <h3>${row.artist} (${row.year})</h3>
           ${row.cover_image ? `<img src="${row.cover_image}" alt="${row.title} cover">` : ''}
+          <p>${row.title}</p>
+          <p>
+            <a class="discogs-button" href="${row.discogs_url}" target="_blank">View on Discogs</a>
+          </p>
           <div style="text-align: center; width: 50%; margin: 0 auto;">
             <label for="comment">Your Comment:</label>
             <textarea id="comment" rows="4" style="width: 100%;"></textarea>
@@ -69,6 +73,10 @@ router.get('/:id', limiter, (req, res) => {
           <button onclick="location.href='/'" class="action-button">Back to Album List</button>
         </div>
         <script>
+          function handleListenedTo(albumId) {
+            const comment = document.getElementById('comment').value || 'No Comments.';
+            location.href = '/listenedTo/' + albumId + '?comment=' + encodeURIComponent(comment);
+          }
           function formatLocalTime() {
             const cards = document.querySelectorAll('.listening-card');
             cards.forEach(card => {
@@ -81,11 +89,6 @@ router.get('/:id', limiter, (req, res) => {
           let currentCount = 5;
 
           document.addEventListener('DOMContentLoaded', formatLocalTime);
-
-          function handleListenedTo(albumId) {
-            const comment = document.getElementById('comment').value || 'No Comments.';
-            location.href = '/listenedTo/' + albumId + '?comment=' + encodeURIComponent(comment);
-          }
 
           function loadMore() {
             const allEntries = ${JSON.stringify(listenings)};
