@@ -1,4 +1,19 @@
 const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database('./vinyl.db');
+
+function markAsListened(albumId, comment) {
+  return new Promise((resolve, reject) => {
+    const query = `INSERT INTO listenings (album_id, comment, listened_at) VALUES (?, ?, ?)`;
+    const listenedAt = new Date().toISOString();
+
+    db.run(query, [albumId, comment, listenedAt], function (err) {
+      if (err) {
+        return reject(err);
+      }
+      resolve(this.lastID);
+    });
+  });
+}
 
 function createDatabase() {
   const db = new sqlite3.Database('./vinyl.db', (err) => {
@@ -72,5 +87,6 @@ module.exports = {
   createDatabase,
   createAlbumsTable,
   createNotesTable,
-  createListeningsTable
+  createListeningsTable,
+  markAsListened
 }; 
